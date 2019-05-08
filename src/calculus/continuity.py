@@ -1,9 +1,6 @@
 import numpy as np
 import plotly.graph_objs as go
 from plotly.offline import iplot
-from ipywidgets import widgets
-
-from IPython.display import display
 
 def qf(t):
   r = -9.8*(t**2) + 20*t + 1
@@ -33,16 +30,6 @@ def plot_quadratic_f():
             ticks = 'outside'
         )
     )
-
-    initialHeight = widgets.BoundedFloatText(
-        description = 'Initial Height',
-        value = 1,
-        min = 0,
-        step = 0.5
-    )
-    container = widgets.HBox([initialHeight])
-    display(container)
-
 
     fig = go.Figure(data=[trace], layout = layout)
     iplot(fig)
