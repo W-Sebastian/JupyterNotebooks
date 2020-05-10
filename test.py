@@ -1,7 +1,16 @@
 # To add a new cell, type '# %%'
 # To add a new markdown cell, type '# %% [markdown]'
+# %%
+from IPython import get_ipython
+
 # %% [markdown]
 # <a href="https://colab.research.google.com/github/W-Sebastian/JupyterNotebooks/blob/master/Structuri_U%C8%99oare_Grind%C4%83.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+
+# %%
+# we need some extra python packages installed; let's make sure we get them now
+# get_ipython().system('pip install pyaml')
+# get_ipython().system('pip install pyswarms')
+
 # %% [markdown]
 # # Analiza grindei sandwich: studiu de caz pentru o trambulină
 # 
@@ -61,14 +70,14 @@
 
 # %%
 class SkinMaterialParameters:
-    def __init__(self, rho, Ef, tau_af, Cost):
+    def __init__(self, rho:float, Ef:float, tau_af:float, Cost:float):
         self.rho = rho
         self.Ef = Ef # Longitudinal Elastic Modulus
         self.tau_af = tau_af # Persmissible Shear Stress
         self.Cost = Cost # euro/kg
 
 class CoreMaterialParameters:
-    def __init__(self, rho, Ec, Gc, tau_ac, Cost):
+    def __init__(self, rho:float, Ec:float, Gc:float, tau_ac:float, Cost:float):
         self.rho = rho
         self.Ec = Ec # Longitudinal Elastic Modulus
         self.Gc = Gc # Transversal Elastic Modulus
@@ -87,7 +96,7 @@ class CoreMaterialParameters:
 
 # %%
 class BeamModel:
-    def __init__(self, L, b, tf, tc, skinMat : SkinMaterialParameters, coreMat : CoreMaterialParameters):
+    def __init__(self, L:float, b:float, tf:float, tc:float, skinMat : SkinMaterialParameters, coreMat : CoreMaterialParameters):
         self.L = L # Lenght
         self.b = b # Width
         self.tf = tf # Skin height
@@ -105,7 +114,7 @@ class BeamModel:
 
 # %%
 class BeamSimulation:
-    def __init__(self, m, a, km, model : BeamModel, sf):
+    def __init__(self, m:float, a:float, km:float, model : BeamModel, sf:float):
         self.m = m
         self.a = a
         self.km = km
@@ -123,16 +132,16 @@ class BeamSimulation:
 from enum import Enum
 
 class SkinMaterials(Enum):
-    Steel = 1
-    Aluminium = 2
-    GFRP = 3
-    CFRP = 4
+    Steel = 0
+    Aluminium = 1
+    GFRP = 2
+    CFRP = 3
 
 class CoreMaterials(Enum):
-    DivinycellH60 = 1
-    DivinycellH100 = 2
-    DivinycellH130 = 3
-    DivinycellH200 = 4
+    DivinycellH60 = 0
+    DivinycellH100 = 1
+    DivinycellH130 = 2
+    DivinycellH200 = 3
 
 skin_materials = {
     SkinMaterials.Steel: SkinMaterialParameters(7800, 205000 * 1e6, 300 * 1e6, 0.4),
@@ -184,26 +193,6 @@ for mat in core_materials.items():
     costs_core.append(mat[1].Cost * mat[1].rho)
 values = list(map(list, zip(*values)))
 
-fig = go.Figure(data=[ go.Table(
-    header=dict(
-        values=labels,
-        font=dict(size=10),
-        align="center"
-        ), 
-    cells=dict(
-        values=values,
-        align="left"
-        ))])
-fig.show()
-
-fig = make_subplots(rows=1, cols=2, subplot_titles=("Core Materials (cost per m^3)", "Skin Materials (cost per m^3)"))
-
-fig.add_trace(go.Bar(x=materials_core, y=costs_core), row=1, col=1)
-fig.add_trace(go.Bar(x=materials_skin, y=costs_skin), row=1, col=2)
-fig.update_yaxes(row=1, col=1, ticksuffix='€')
-fig.update_yaxes(row=1, col=2, ticksuffix='€')
-fig.update_layout(coloraxis=dict(colorscale='Bluered_r'), showlegend=False)
-fig.show()
 
 # %% [markdown]
 # ## Calculele de simulare
@@ -212,17 +201,18 @@ fig.show()
 # 
 # - Forța aplicată: $P = m a$;
 # - Deformarea maximă admisă: $W_m = \frac{P}{k_n}$;
-# - Tensunea de forfecare maximă admisă în înveliș (cu safety factor): $\tau_{af} = \tau_{af} \cdot s_f$;
-# - Tensiunea de forfecare maximă admisă în miez (cu safety factor): $\tau_{ac} = \tau_{ac} \cdot s_c$;
+# - Tensunea de forfecare maximă admisă în înveliș (cu safety factor): $\tau_{af} = \frac{\tau_{af}}{s_f}$;
+# - Tensiunea de forfecare maximă admisă în miez (cu safety factor): $\tau_{ac} = \frac{\tau_{ac}}{s_f}$;
 # - Volumul învelișului: $V_f = 2t_f \cdot L \cdot b$;
 # - Volumul miezului: $V_c = t_c \cdot L \cdot b$;
 # - Costul total: $Cost = V_f \cdot \rho_f \cdot Cost_f + V_c \cdot \rho_c \cdot Cost_c$;
 # - Grosimea totală: $ d = 2t_f + t_c $;
-# - Rigiditatea la încovoiere din grindă: $ D = \frac{1}{2b}E_f \cdot t_f \cdot d^2 $;
+# - Rigiditatea la încovoiere din grindă: $ D = \frac{1}{2}E_f \cdot t_f \cdot d^2 \cdot b$;
 # - Rigiditatea la forfecare din grindă: $ S = \frac{1}{t_c} G_c \cdot d^2 $ ;
 # - Deformarea reală: $ W = \frac{P \cdot L^3}{3D} + \frac{P \cdot L}{S} $;
 # - Tensiunea maximă de forfecare din înveliș: $ \tau_f = \frac{P}{D} \frac{E_f}{2} \cdot (\frac{t_c}{2} + t_f)^2 - L^2 $;
 # - Tensiunea maximă de forfecare din miez: $ \tau_c = \frac{P}{D} [ \frac{E_c}{2} (\frac{t_c}{2}^2 - L^2) + \frac{E_f}{2}(t_f \cdot t_c + t_f^2) ]$;
+# - Masa totală: $ M_t = V_f \cdot \rho_f + V_c \cdot \rho_c $
 # 
 # 
 
@@ -256,17 +246,18 @@ class Result:
         # Now solve all the equations described above and store in data memebers the values we're interested in
         P = m*a
         Wm = P/km
-        tau_af = tau_af * sf
-        tau_ac = tau_ac * sf
+        tau_af = tau_af / sf
+        tau_ac = tau_ac / sf
         Vf = 2*tf * L *b
         Vc = tc * L * b
         Cost = Vf * rho_f * cost_f + Vc * rho_c * cost_c
         d = 2*tf+tc
-        D = 1/(2*b) *Ef * tf * d**2
+        D = (Ef * tf * d**2 / 2)*b
         S = (1/tc) * Gc * d**2
         W = (P*L**3)/(3*D) + (P*L)/S
         tau_f = (P/D)*(Ef/2)*(tc/2 + tf)**2
         tau_c = (P/D)*( Ec/2 * ((tc**2)/2) + Ef/2 * (tf*tc + tf**2) )
+        Mt = Vf * rho_f + Vc * rho_c
 
         # Store the values we're interested in
         self.W = W
@@ -278,8 +269,21 @@ class Result:
         self.tau_c = tau_c
 
         self.Cost = Cost
+        self.Mt:float = Mt
 
+# %% [markdown]
+# Înainte de a continua cu explorarea posibilelor combinații vom rula o primă simulare cu valori aleator alese pe care vom intenționa să o și corelăm.
+# 
+# ## Corelarea
+# 
+# Vom alege să rulăm o simulare pentru o grindă cu următorii parametrii:
+# - Lungime de 4 m;
+# - Grosime miez de 70 cm;
+# - Grosime înveliș de 1mm;
+# - Înveliș din oțel și miez din Divinycell H60.
+# 
 
+# %%
 tf = 1*1e-3   # shell of 1 mm
 tc = 70*1e-3  # core of 7 cmm
 L = 4         # can vary between 1 and 4 meters; let's go with 4 for now
@@ -289,24 +293,178 @@ coreMat = core_materials[CoreMaterials.DivinycellH60]
 
 model = BeamModel(L, b, tf, tc, skinMat, coreMat)
 
-m = 150                # kg - this is fixed
-a = 9.834      # m/s^2 - we would need to have higher accelerations to account for jumps
+m = 150    # kg - this is fixed
+a = 9.834  # m/s^2 - we would need to have higher accelerations to account for jumps
 km = 5000  # N/m - fixed
-sf = 5          # if too expensive, make this smaller :-)
+sf = 5     # if too expensive, make this smaller :-)
 
 simulation = BeamSimulation(m, a, km, model, sf)
 
 res = Result(simulation)
 res.Solve()
-print(res.W * 1e3)
-print(res.Wm * 1e3)
 
-print(res.tau_f * 1e-6)
-print(res.tau_af * 1e-6)
+labels = []
+values = []
 
-print(res.tau_c * 1e-6)
-print(res.tau_ac * 1e-6)
+labels.append("Displacement")
+values.append("{:.2f} mm".format(res.W * 1e3))
 
+labels.append("Admissable Displacement")
+values.append("{:.2f} mm".format(res.Wm * 1e3))
+
+labels.append("Core Stress")
+values.append("{:.2f} MPa".format(res.tau_c * 1e-6))
+
+labels.append("Admissable Core Stress")
+values.append("{:.2f} MPa".format(res.tau_ac * 1e-6))
+
+labels.append("Shell Stress")
+values.append("{:.2f} MPa".format(res.tau_f * 1e-6))
+
+labels.append("Admissable Shell Stress")
+values.append("{:.2f} MPa".format(res.tau_af * 1e-6))
+
+labels.append("Mass")
+values.append("{:.2f} kg".format(res.Mt))
+
+labels.append("Cost")
+values.append("{:.2f} €".format(res.Cost))
+
+
+# %% [markdown]
+# ### Modelul cu element finit
+# 
+# Pentru cazul mai sus ales vom crea un model cu element finit pentru a corela rezultatul obținut.  
+# Partea de CAD este trivială pentru cazul de grindă, modelăm miezul ca un solid:
+# ![miez](img/miez_cad.png)  
+# Pentru înveliș vom face modelarea folosind 2 suprafețe:
+# ![invelis](img/invelis_cad.png)  
+# 
+# La discretizare, deoarece vom folosi o soluție liniară, pentru a putea captura totuși reduce eroarea și a captura comportamentul parabolic al modelului optăm pentru elemtene parabolice TETRA în partea de solid și elemente parabolice TRIA în partea de suprafețe:  
+# ![mesh](img/mesh.png)
+# 
+# În total avem aproximativ ~638k de elemente pentru miez și 80k de elemente pentru înveliș.  
+# Materialul pentru înveliș îl definim ca oțel (isotropic) însă pentru miez vom defini materialul ca orthotropic cu module de elasticitate diferite pentru axa +X respectiv +Y. Axa +Z al materialului poate fi ignorată.  
+# 
+# Pentru modelul de simulare folosim Flex Glue între înveliș și miez, încastrăm complet unul din capete (doar pe înveliș) și punem o forță egală cu masa * accelerația la capătul liber:  
+# ![sim](img/sim.png)
+# 
+# Folosim NASTRAN SOL101 - Static Linear pentru obținerea deformațiilor:
+# 
+# ![sim](img/displacement.png)
+# 
+# Un lucru interesant este distribuția stresului Von-Mises pentru această simulare:
+# 
+# ![stress](img/stress.png).
+# 
+# În concluzie, analiza cu element finit a rezultat în valori apropiate de cele calculate analitic: 133 mm față de 122 mm. Diferența poate fi explicată de aproximările făcute atât în analiza cu element finit cât și în modelul matematic. O simulare mai bună ar include modificarea condiților la limită astfel încât să acopere realist utilizarea unei astfel de trambuline (ex: încastrarea să fie făcută pe modul de prindere, forța distribuită pe o suprafață mai mare a grinzii etc).
+# %% [markdown]
+# ## Căutarea ghidată în spațiul de soluții
+# 
+# 
+
+# %%
+import pyswarms as ps
+from copy import deepcopy
+import math
+
+def F_Cost_single(params):
+    L = params[0]
+    tf = params[1]
+    tc = params[2]
+    matSkin = params[3]
+    matCore = params[4]
+
+    sim = deepcopy(simulation) # allow parallel computation
+    sim.model.L = L
+    sim.model.b = b
+    sim.model.tf = tf
+    sim.model.tc = tc
+
+    matSkinIdx = math.floor(matSkin)
+    matCoreIdx = math.floor(matCore)
+
+    sim.model.CoreMat = core_materials[CoreMaterials(matCoreIdx)]
+    sim.model.SkinMat = skin_materials[SkinMaterials(matSkinIdx)]
+
+    res = Result(sim)
+    res.Solve()
+
+    # we compute the total function cost as the total mass of the beam
+    # however, for every constraint not met we multiply with the absolute difference of the constraint
+    # so if the cost is 300 euroes (100 over the limit of 200) we multiply the mass with 100
+    # this harshly penalisez the algorithm for going over the constraints
+    # Warning: the function cost (or cost function) is different than the cost in euroes for the beam
+    #   The cost function is used in the guided search algorithm
+
+    fCost = res.Mt
+
+    if res.Cost > 200:
+        fCost *= (res.Cost / 200) * 100
+    if res.W > res.Wm:
+        fCost *= (res.W / res.Wm) * 100
+    if res.tau_f > res.tau_af:
+        fCost *= (res.tau_f / res.tau_af) * 100
+    if res.tau_c > res.tau_ac:
+        fCost *= (res.tau_c / res.tau_ac) * 100
+
+    return fCost
+
+
+def F_Cost(params):
+    n_particles = params.shape[0]
+    return [F_Cost_single(params[i]) for i in range(n_particles)]
+
+swarm_size = 50
+dim = 5
+options = {'c1':1.5, 'c2':1.5, 'w':0.5}
+constraints =  (
+    (1, 0.1 * 1e-3,  10 * 1e-3, 0, 0),
+    (4, 10  * 1e-3, 100 * 1e-3, len(SkinMaterials) - 0.01, len(CoreMaterials) - 0.01)
+)
+
+optimizer = ps.single.GlobalBestPSO(n_particles=swarm_size, dimensions=dim, options=options, bounds=constraints)
+
+cost, joint_vars = optimizer.optimize(F_Cost, 10000, None)
+
+print(cost)
+print(joint_vars)
+
+
+L = joint_vars[0]
+tf = joint_vars[1]
+tc = joint_vars[2]
+matSkin = joint_vars[3]
+matCore = joint_vars[4]
+
+sim = deepcopy(simulation) # allow parallel computation
+sim.model.L = L
+sim.model.b = b
+sim.model.tf = tf
+sim.model.tc = tc
+
+matSkinIdx = math.floor(matSkin)
+matCoreIdx = math.floor(matCore)
+
+sim.model.CoreMat = core_materials[CoreMaterials(matCoreIdx)]
+sim.model.SkinMat = skin_materials[SkinMaterials(matSkinIdx)]
+
+res = Result(sim)
+res.Solve()
+
+print("Displacement")
+print(res.W)
+print(res.Wm)
+print("Core Stress")
+print(res.tau_c)
+print(res.tau_ac)
+print("Shell Stress")
+print(res.tau_f)
+print(res.tau_af)
+print("Cost")
+print(res.Cost)
+print("Mass")
+print(res.Mt)
 
 
 # %%
